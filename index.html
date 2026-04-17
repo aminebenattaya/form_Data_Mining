@@ -436,10 +436,10 @@
   const SUPABASE_URL = "https://pmohmbxccuwptzgvanli.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtb2htYnhjY3V3cHR6Z3ZhbmxpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0Mjc0MTksImV4cCI6MjA5MjAwMzQxOX0.tgwsQV4lBb1W_rDpOrpRaJw0yg5J_DG7D_Uu3xtTcH8";
   
-  let supabase = null;
+  let dbClient = null;
   try {
     if(SUPABASE_URL.includes("supabase.co") && window.supabase) {
-      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     }
   } catch (err) {
     console.warn("Supabase error: ", err);
@@ -524,9 +524,9 @@
       "Moyenne": answers['q10']
     };
 
-    if (supabase) {
+    if (dbClient) {
       // 🟢 SAUVEGARDE SUR SUPABASE (EN LIGNE)
-      const { error } = await supabase.from('reponses').insert([{ data: finalData }]);
+      const { error } = await dbClient.from('reponses').insert([{ data: finalData }]);
       if (error) console.error("Erreur Supabase: ", error);
     } else {
       // 🟠 SAUVEGARDE EN LOCAL (MODE HORS-LIGNE/DEV)
@@ -588,9 +588,9 @@
     document.getElementById('admin-dashboard').style.display = 'block';
 
     let db = [];
-    if (supabase) {
+    if (dbClient) {
       // 🟢 LECTURE DEPUIS SUPABASE (EN LIGNE)
-      const { data, error } = await supabase.from('reponses').select('data');
+      const { data, error } = await dbClient.from('reponses').select('data');
       if (data) {
         db = data.map(item => item.data);
       }
