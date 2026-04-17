@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --bg: #0f172a;
@@ -424,6 +425,22 @@
 </div>
 
 <script>
+  // ==========================================
+  // 🟢 CONFIGURATION SUPABASE 🟢
+  // 1. Allez sur Supabase et créez un projet.
+  // 2. Remplacez l'URL et la clé ci-dessous par celles de votre projet.
+  // 3. Créez une table nommée "reponses".
+  // 4. Ajoutez une colonne nommée "data" (Type: JSONB).
+  // 5. Désactivez RLS (Row Level Security) sur la table pour tester publiquement.
+  // ==========================================
+  const SUPABASE_URL = "https://VOTRE_URL_SUPABASE.supabase.co";
+  const SUPABASE_KEY = "VOTRE_CLE_ANON_KEY";
+  
+  let supabase = null;
+  if(SUPABASE_URL.includes("supabase.co") && !SUPABASE_URL.includes("VOTRE_URL")) {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  }
+
   // Initialisation Stress
   const stressGrid = document.getElementById('stress-grid');
   for(let i=1; i<=10; i++){
@@ -486,7 +503,7 @@
     goToStep(n - 1);
   }
 
-  function submitForm() {
+  async function submitForm() {
     if (!validateStep(10)) return;
 
     const finalData = {
@@ -503,10 +520,17 @@
       "Moyenne": answers['q10']
     };
 
-    // Save to LocalStorage
-    let db = JSON.parse(localStorage.getItem('dataMiningDBBI') || '[]');
-    db.push(finalData);
-    localStorage.setItem('dataMiningDBBI', JSON.stringify(db));
+    if (supabase) {
+      // 🟢 SAUVEGARDE SUR SUPABASE (EN LIGNE)
+      const { error } = await supabase.from('reponses').insert([{ data: finalData }]);
+      if (error) console.error("Erreur Supabase: ", error);
+    } else {
+      // 🟠 SAUVEGARDE EN LOCAL (MODE HORS-LIGNE/DEV)
+      console.warn("Supabase non configuré : Sauvegarde locale uniquement.");
+      let db = JSON.parse(localStorage.getItem('dataMiningDBBI') || '[]');
+      db.push(finalData);
+      localStorage.setItem('dataMiningDBBI', JSON.stringify(db));
+    }
 
     // Show Thank you screen
     document.getElementById('form-wrap').style.display = 'none';
@@ -543,7 +567,9 @@
     }
   }
 
-  function openAdminDashboard() {
+  window.DB_CACHE = []; // Stockage temporaire pour l'export Excel
+
+  async function openAdminDashboard() {
     document.getElementById('form-wrap').style.display = 'none';
     document.getElementById('end-screen').style.display = 'none';
     document.getElementById('progress-bar').style.display = 'none';
@@ -553,10 +579,24 @@
     document.getElementById('main-header').querySelector('h1').innerText = "Dashboard Data";
     document.getElementById('main-header').querySelector('p').innerText = "Consultez et exportez les données";
     
-    let db = JSON.parse(localStorage.getItem('dataMiningDBBI') || '[]');
-    document.getElementById('db-count').innerText = db.length;
-    
     const tbody = document.querySelector('#responses-table tbody');
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Chargement depuis les serveurs... ⏳</td></tr>';
+    document.getElementById('admin-dashboard').style.display = 'block';
+
+    let db = [];
+    if (supabase) {
+      // 🟢 LECTURE DEPUIS SUPABASE (EN LIGNE)
+      const { data, error } = await supabase.from('reponses').select('data');
+      if (data) {
+        db = data.map(item => item.data);
+      }
+    } else {
+      // 🟠 LECTURE EN LOCAL (HORS LIGNE)
+      db = JSON.parse(localStorage.getItem('dataMiningDBBI') || '[]');
+    }
+
+    window.DB_CACHE = db;
+    document.getElementById('db-count').innerText = db.length;
     tbody.innerHTML = '';
     
     if(db.length === 0) {
@@ -577,13 +617,11 @@
         `;
       });
     }
-    
-    document.getElementById('admin-dashboard').style.display = 'block';
   }
 
   function exportData() {
-    let db = JSON.parse(localStorage.getItem('dataMiningDBBI') || '[]');
-    if (db.length === 0) {
+    let db = window.DB_CACHE;
+    if (!db || db.length === 0) {
       alert("La base est vide !");
       return;
     }
