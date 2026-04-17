@@ -437,8 +437,12 @@
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtb2htYnhjY3V3cHR6Z3ZhbmxpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0Mjc0MTksImV4cCI6MjA5MjAwMzQxOX0.tgwsQV4lBb1W_rDpOrpRaJw0yg5J_DG7D_Uu3xtTcH8";
   
   let supabase = null;
-  if(SUPABASE_URL.includes("supabase.co") && !SUPABASE_URL.includes("VOTRE_URL")) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  try {
+    if(SUPABASE_URL.includes("supabase.co") && window.supabase) {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+  } catch (err) {
+    console.warn("Supabase error: ", err);
   }
 
   // Initialisation Stress
