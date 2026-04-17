@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2ème BI — Enquête Data Mining 🚀</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<style>
+  :root {
+    --bg: #0f172a;
+    --bg-card: #1e293b;
+    --primary: #6366f1;
+    --primary-hover: #4f46e5;
+    --secondary: #ec4899;
+    --accent: #14b8a6;
+    --text: #f8fafc;
+    --text-muted: #94a3b8;
+    --error: #ef4444;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+
+  .bg-shapes {
+    position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+  }
+  .shape {
+    position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.5;
+    animation: float 10s infinite ease-in-out alternate;
+  }
+  .shape1 { width: 400px; height: 400px; background: rgba(99, 102, 241, 0.4); top: -100px; left: -100px; }
+  .shape2 { width: 300px; height: 300px; background: rgba(236, 72, 153, 0.3); bottom: -50px; right: -50px; animation-delay: -3s; }
+  .shape3 { width: 250px; height: 250px; background: rgba(20, 184, 166, 0.3); bottom: 50%; left: 50%; transform: translate(-50%, 50%); animation-delay: -6s; }
+
+  @keyframes float {
+    0% { transform: translateY(0) scale(1); }
+    100% { transform: translateY(-50px) scale(1.1); }
+  }
+
+  .wrapper {
+    width: 100%;
+    max-width: 600px;
+    padding: 2rem 1.5rem;
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .wrapper.admin-mode {
+    max-width: 900px; /* Plus large pour la table admin */
+  }
+
+  .header { text-align: center; margin-bottom: 2rem; }
+  .header h1 {
+    font-size: 2.2rem; font-weight: 800;
+    background: linear-gradient(to right, var(--primary), var(--secondary));
+    -webkit-background-clip: text; color: transparent;
+    margin-bottom: 0.5rem;
+  }
+  .header p { color: var(--text-muted); font-size: 1rem; }
+
+  .progress-container {
+    width: 100%; background: #334155; border-radius: 999px; height: 8px; margin-bottom: 2rem; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: linear-gradient(90deg, var(--primary), var(--secondary));
+    width: 0%; border-radius: 999px; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .progress-text {
+    text-align: right; font-size: 0.85rem; color: var(--text-muted); margin-top: -1.5rem; margin-bottom: 1.5rem; font-weight: 600;
+  }
+
+  .step { display: none; animation: slideUp 0.4s ease forwards; }
+  .step.active { display: block; }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card {
+    background: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+  }
+
+  .emoji-icon { font-size: 3rem; margin-bottom: 1rem; text-align: center; display: block; }
+  .question-title { font-size: 1.3rem; font-weight: 600; margin-bottom: 1.5rem; text-align: center; line-height: 1.4; }
+
+  .input-text {
+    width: 100%; padding: 1rem; border-radius: 12px;
+    background: rgba(15, 23, 42, 0.6); border: 2px solid transparent;
+    color: white; font-size: 1.1rem; text-align: center; outline: none; transition: all 0.3s;
+  }
+  .input-text:focus { border-color: var(--primary); background: rgba(15, 23, 42, 0.9); }
+
+  .range-container { position: relative; margin: 1rem 0 2rem; }
+  input[type="range"] { width: 100%; -webkit-appearance: none; background: transparent; cursor: pointer; }
+  input[type="range"]::-webkit-slider-runnable-track { width: 100%; height: 8px; background: #334155; border-radius: 10px; }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; height: 24px; width: 24px; border-radius: 50%;
+    background: var(--accent); margin-top: -8px; border: 3px solid #fff;
+    box-shadow: 0 0 10px rgba(20, 184, 166, 0.5); transition: transform 0.1s;
+  }
+  input[type="range"]::-webkit-slider-thumb:active { transform: scale(1.2); }
+  
+  .val-display { text-align: center; font-size: 2rem; font-weight: 800; color: var(--accent); margin-bottom: 1rem; }
+
+  .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .options-grid.stress { grid-template-columns: repeat(5, 1fr); gap: 0.5rem; }
+  
+  .opt-btn {
+    background: rgba(15, 23, 42, 0.6); border: 2px solid transparent;
+    padding: 1rem; border-radius: 12px; color: white;
+    font-size: 1rem; font-weight: 600; cursor: pointer;
+    transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+  }
+  .opt-btn:hover { background: rgba(99, 102, 241, 0.2); transform: translateY(-2px); }
+  .opt-btn.active { border-color: var(--primary); background: rgba(99, 102, 241, 0.3); color: var(--primary); }
+  .opt-btn.stress-btn { padding: 0.8rem 0; font-size: 1.2rem; }
+  
+  .nav-buttons { display: flex; gap: 1rem; margin-top: 1rem; }
+  .btn {
+    flex: 1; padding: 1rem; border: none; border-radius: 12px;
+    font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-prev { background: rgba(255,255,255,0.1); color: white; flex: 0.3; }
+  .btn-prev:hover { background: rgba(255,255,255,0.2); }
+  .btn-next { background: var(--primary); color: white; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4); }
+  .btn-next:hover { background: var(--primary-hover); transform: translateY(-2px); }
+  .btn-submit { background: var(--secondary); color: white; box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4); }
+  .btn-submit:hover { filter: brightness(1.1); transform: translateY(-2px); }
+  
+  .error { color: var(--error); text-align: center; margin-top: 1rem; font-size: 0.9rem; display: none; font-weight: 600; }
+
+  #end-screen { display: none; text-align: center; animation: slideUp 0.6s ease; }
+  .success-icon { font-size: 5rem; margin-bottom: 1rem; }
+  .end-title { font-size: 2rem; font-weight: 800; color: var(--accent); margin-bottom: 1rem; }
+  
+  .footer-links {
+    margin-top: 3rem; text-align: center; margin-bottom: 1rem;
+  }
+  .footer-links a { color: var(--text-muted); font-size: 0.85rem; text-decoration: none; transition: 0.2s; }
+  .footer-links a:hover { color: white; }
+
+  /* Admin Dashboard Styles */
+  #admin-dashboard { display: none; animation: slideUp 0.4s ease forwards; width: 100%; }
+  .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem; }
+  .admin-title { font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+  
+  .btn-export {
+    background: #10b981; color: white; border: none; padding: 0.8rem 1.2rem; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: 0.2s;
+  }
+  .btn-export:hover { background: #059669; transform: translateY(-2px); }
+
+  .table-responsive { width: 100%; overflow-x: auto; background: rgba(30, 41, 59, 0.7); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
+  table { width: 100%; border-collapse: collapse; text-align: left; white-space: nowrap; }
+  th, td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  th { background: rgba(0,0,0,0.2); color: var(--text-muted); font-weight: 600; font-size: 0.9rem; text-transform: uppercase; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  #login-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+  .modal-content { background: var(--bg-card); padding: 2rem; border-radius: 16px; width: 90%; max-width: 400px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
+</style>
+</head>
+<body>
+
+<div class="bg-shapes">
+  <div class="shape shape1"></div>
+  <div class="shape shape2"></div>
+  <div class="shape shape3"></div>
+</div>
+
+<div class="wrapper" id="main-wrapper">
+  
+  <div class="header" id="main-header">
+    <h1>Data Mining 🕵️‍♂️</h1>
+    <p>2ème Business Intelligence</p>
+  </div>
+
+  <div class="progress-text" id="progress-text">Étape 1 / 10</div>
+  <div class="progress-container" id="progress-bar">
+    <div class="progress-fill" id="progress-fill"></div>
+  </div>
+
+  <!-- LE FORMULAIRE -->
+  <div id="form-wrap">
+    
+    <div class="step active" data-step="1">
+      <div class="card">
+        <span class="emoji-icon">👋</span>
+        <div class="question-title">Comment tu t'appelles ?</div>
+        <input type="text" id="q1" class="input-text" placeholder="Ton prénom ou pseudo..." autocomplete="off">
+        <div class="error" id="err1">Oups ! N'oublie pas ton prénom.</div>
+      </div>
+      <div class="nav-buttons">
+        <button class="btn btn-next" onclick="nextStep(1)">Suivant 🚀</button>
+      </div>
+    </div>
+
+    <div class="step" data-step="2">
+      <div class="card">
+        <span class="emoji-icon">🎂</span>
+        <div class="question-title">Quel âge as-tu ?</div>
+        <div class="val-display"><span id="val2">20</span> ans</div>
+        <div class="range-container">
+          <input type="range" id="q2" min="15" max="30" value="20" oninput="document.getElementById('val2').innerText = this.value">
+        </div>
+      </div>
+      <div class="nav-buttons">
+        <button class="btn btn-prev" onclick="prevStep(2)">←</button>
+        <button class="btn btn-next" onclick="nextStep(2)">Suivant 🚀</button>
+      </div>
+    </div>
+
+    <!-- ... (Steps 3 à 9 identiques) ... -->
+    <div class="step" data-step="3">
+      <div class="card">
+        <span class="emoji-icon">💤</span>
+        <div class="question-title">Combien d'heures tu dors par nuit ?</div>
+        <div class="val-display"><span id="val3">7</span> h</div>
+        <div class="range-container">
+          <input type="range" id="q3" min="1" max="14" value="7" oninput="document.getElementById('val3').innerText = this.value">
+        </div>
+      </div>
+      <div class="nav-buttons">
+        <button class="btn btn-prev" onclick="prevStep(3)">←</button>
+        <button class="btn btn-next" onclick="nextStep(3)">Suivant 🚀</button>
+      </div>
+    </div>
+
+    <div class="step" data-step="4">
+      <div class="card">
+        <span class="emoji-icon">📱</span>
+        <div class="question-title">Temps passé sur les réseaux (h/jour)</div>
+        <div class="val-display"><span id="val4">3</span> h</div>
+        <div class="range-container">
+          <input type="range" id="q4" min="0" max="14" value="3" oninput="document.getElementById('val4').innerText = this.value">
+        </div>
+      </div>
+      <div class="nav-buttons">
+        <button class="btn btn-prev" onclick="prevStep(4)">←</button>
+        <button class="btn btn-next" onclick="nextStep(4)">Suivant 🚀</button>
+      </div>
+    </div>
+
+    <div class="step" data-step="5">
+      <div class="card">
+        <span class="emoji-icon">📚</span>
+        <div class="question-title">Heures d'étude par jour (hors cours)</div>
+        <div class="val-display"><span id="val5">2</span> h</div>
+        <div class="range-container">
+          <input type="range" id="q5" min="0" max="10" value="2" oninput="document.getElementById('val5').innerText = this.value">
+        </div>
+      </div>
+      <div class="nav-buttons">
+        <button class="btn btn-prev" onclick="prevStep(5)">←</button>
+        <button class="btn btn-next" onclick="nextStep(5)">Suivant 🚀</button>
+      </div>
+    </div>
+
+    <div class="step" data-step="6">
+      <div class="card">
+        <span class="emoji-icon">🍳</span>
+        <div class="question-title">Prends-tu un petit-déjeuner ?</div>
+        <div class="options-grid">
+          <button class="opt-btn" onclick="selectOpt(6, 'Oui')"><span>😋</span> Oui</button>
+          <button class="opt-btn" onclick="selectOpt(6, 'Non')"><span>😴</span> Non</button>
+        </div>
+        <input type="hidden" id="q6">
+        <div class="error" id="err6">Sélectionne une réponse !</div>
+      </div>
+      <div class="nav-buttons">
+        <button class="btn btn-prev" onclick="prevStep(6)">←</button>
+        <button class="btn btn-next" onclick="nextStep(6)">Suivant 🚀</button>
+      </div>
+    </div>
+
+    <div class="step" data-step="7">
+      <div class="card">
+        <span class="emoji-icon">❤️</span>
+        <div class="question-title">Ton application préférée ?</div>
+        <div class="options-grid">
+          <button class="opt-btn" onclick="selectOpt(7, 'Instagram')"><span>📸</span> Insta</button>
+          <button class="opt-btn" onclick="selectOpt(7, 'TikTok')"><span>🎵</span> TikTok</button>
+          <button class="opt-btn" onclick="selectOpt(7, 'YouTube')"><span>▶️</span> YouTube</button>
+          <button class="opt-btn" onclick="selectOpt(7, 'Autre')"><span>✨</span> Autre</button>
+        </div>
+        <input type="hidden" id="q7">
+        <div class="error" id="err7">Sélectionne une application !</div>
+      </div>
+      <div class="nav-buttons">
+        <button class="btn btn-prev" onclick="prevStep(7)">←</button>
+        <button class="btn btn-next" onclick="nextStep(7)">Suivant 🚀</button>
+      </div>
+    </div>
+
+    <div class="step" data-step="8">
+      <div class="card">
+        <span class="emoji-icon">🏋️‍♀️</span>
+        <div class="question-title">Fais-tu du sport ? (h / semaine)</div>
+        <div class="val-display"><span id="val8">3</span> h</div>
+        <div class="range-container">
+          <input type="range" id="q8" min="0" max="20" value="3" oninput="document.getElementById('val8').innerText = this.value">
+        </div>
+      </div>
+      <div class="nav-buttons">
+        <button class="btn btn-prev" onclick="prevStep(8)">←</button>
+        <button class="btn btn-next" onclick="nextStep(8)">Suivant 🚀</button>
+      </div>
+    </div>
+
+    <div class="step" data-step="9">
+      <div class="card">
+        <span class="emoji-icon">🤯</span>
+        <div class="question-title">Ton niveau de stress (1 = Zen, 10 = Panique)</div>
+        <div class="options-grid stress" id="stress-grid"></div>
+        <input type="hidden" id="q9">
+        <div class="error" id="err9">Choisis un niveau de stress !</div>
+      </div>
+      <div class="nav-buttons">
+        <button class="btn btn-prev" onclick="prevStep(9)">←</button>
+        <button class="btn btn-next" onclick="nextStep(9)">Suivant 🚀</button>
+      </div>
+    </div>
+
+    <div class="step" data-step="10">
+      <div class="card">
+        <span class="emoji-icon">🎓</span>
+        <div class="question-title">Moyenne générale estimée ?</div>
+        <div class="options-grid">
+          <button class="opt-btn" onclick="selectOpt(10, '< 10')">Moins de 10</button>
+          <button class="opt-btn" onclick="selectOpt(10, '10 - 12')">10 – 12</button>
+          <button class="opt-btn" onclick="selectOpt(10, '12 - 14')">12 – 14</button>
+          <button class="opt-btn" onclick="selectOpt(10, '14+')">14 et +</button>
+        </div>
+        <input type="hidden" id="q10">
+        <div class="error" id="err10">Sélectionne une moyenne estimée !</div>
+      </div>
+      <div class="nav-buttons">
+        <button class="btn btn-prev" onclick="prevStep(10)">←</button>
+        <button class="btn btn-submit" onclick="submitForm()">Terminer 🎉</button>
+      </div>
+    </div>
+
+  </div> <!-- /form-wrap -->
+
+  <!-- ÉCRAN DE FIN (ETUDIANT) -->
+  <div id="end-screen">
+    <div class="success-icon">✅</div>
+    <div class="end-title">Merci pour ta soumission !</div>
+    <p>Tes réponses ont été envoyées avec succès.</p>
+  </div>
+
+  <!-- DASHBOARD ADMIN -->
+  <div id="admin-dashboard">
+    <div class="admin-header">
+      <div class="admin-title">👨‍🏫 Espace Administrateur</div>
+      <button class="btn-export" onclick="exportData()">
+        📄 Exporter (<span id="db-count">0</span>) XLSX
+      </button>
+    </div>
+    
+    <div class="table-responsive">
+      <table id="responses-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Prénom</th>
+            <th>Âge</th>
+            <th>Moyenne</th>
+            <th>Sommeil</th>
+            <th>Réseaux</th>
+            <th>Sport</th>
+            <th>Stress</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Rempli par JS -->
+        </tbody>
+      </table>
+    </div>
+    
+    <div style="margin-top: 1.5rem; text-align: center;">
+      <button class="btn" onclick="window.location.reload()" style="background: rgba(255,255,255,0.1); color: white; display: inline-block; padding: 0.8rem 1.5rem;">Retour au formulaire</button>
+    </div>
+  </div>
+
+  <div class="footer-links">
+    <a href="#" onclick="promptAdminLogin(event)">🛡️ Espace Admin</a>
+  </div>
+
+</div>
+
+<!-- MODAL MOT DE PASSE -->
+<div id="login-modal">
+  <div class="modal-content">
+    <h3 style="margin-bottom: 1rem;">Accès Restreint</h3>
+    <input type="password" id="admin-pwd" class="input-text" placeholder="Mot de passe..." style="margin-bottom: 1rem;">
+    <div class="error" id="login-err" style="margin-bottom: 1rem;">Mot de passe incorrect</div>
+    <div style="display: flex; gap: 1rem;">
+      <button class="btn btn-prev" onclick="document.getElementById('login-modal').style.display='none'">Annuler</button>
+      <button class="btn btn-next" onclick="verifyAdmin()">Entrer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Initialisation Stress
+  const stressGrid = document.getElementById('stress-grid');
+  for(let i=1; i<=10; i++){
+    stressGrid.innerHTML += `<button class="opt-btn stress-btn" onclick="selectOpt(9, '${i}')">${i}</button>`;
+  }
+
+  let currentStep = 1;
+  const totalSteps = 10;
+  let answers = {};
+
+  function updateProgress() {
+    const pct = ((currentStep - 1) / totalSteps) * 100;
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-text').innerText = `Étape ${currentStep} / ${totalSteps}`;
+  }
+  updateProgress();
+
+  function selectOpt(step, val) {
+    const stepDiv = document.querySelector(`[data-step="${step}"]`);
+    stepDiv.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    document.getElementById(`q${step}`).value = val;
+    document.getElementById(`err${step}`).style.display = 'none';
+  }
+
+  function validateStep(n) {
+    let val;
+    if (n === 1) {
+      val = document.getElementById(`q1`).value.trim();
+      if (val.length < 2) {
+        document.getElementById('err1').style.display = 'block';
+        return false;
+      }
+      answers['Prenom'] = val;
+    } else if (n === 2 || n === 3 || n === 4 || n === 5 || n === 8) {
+      answers[`q${n}`] = document.getElementById(`q${n}`).value;
+    } else {
+      val = document.getElementById(`q${n}`).value;
+      if (!val) {
+        document.getElementById(`err${n}`).style.display = 'block';
+        return false;
+      }
+      answers[`q${n}`] = val;
+    }
+    return true;
+  }
+
+  function goToStep(n) {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.querySelector(`[data-step="${n}"]`).classList.add('active');
+    currentStep = n;
+    updateProgress();
+  }
+
+  function nextStep(n) {
+    if (validateStep(n)) goToStep(n + 1);
+  }
+
+  function prevStep(n) {
+    goToStep(n - 1);
+  }
+
+  function submitForm() {
+    if (!validateStep(10)) return;
+
+    const finalData = {
+      "Date": new Date().toLocaleString('fr-FR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'}),
+      "Prénom": answers['Prenom'],
+      "Âge": Number(answers['q2']),
+      "Sommeil (h/n)": Number(answers['q3']),
+      "Réseaux (h/j)": Number(answers['q4']),
+      "Étude (h/j)": Number(answers['q5']),
+      "Petit-déj": answers['q6'],
+      "Appli": answers['q7'],
+      "Sport (h/sem)": Number(answers['q8']),
+      "Stress (1-10)": Number(answers['q9']),
+      "Moyenne": answers['q10']
+    };
+
+    // Save to LocalStorage
+    let db = JSON.parse(localStorage.getItem('dataMiningDBBI') || '[]');
+    db.push(finalData);
+    localStorage.setItem('dataMiningDBBI', JSON.stringify(db));
+
+    // Show Thank you screen
+    document.getElementById('form-wrap').style.display = 'none';
+    document.getElementById('progress-bar').style.display = 'none';
+    document.getElementById('progress-text').style.display = 'none';
+    document.getElementById('end-screen').style.display = 'block';
+
+    if (typeof confetti === 'function') {
+      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#6366f1', '#ec4899', '#14b8a6'] });
+    }
+    
+    // Au bout de 4 secondes, on recharge pour le prochain élève
+    setTimeout(() => {
+        window.location.reload();
+    }, 4000);
+  }
+
+  // == ADMIN SYSTEM ==
+  function promptAdminLogin(e) {
+    e.preventDefault();
+    document.getElementById('login-modal').style.display = 'flex';
+    document.getElementById('login-err').style.display = 'none';
+    document.getElementById('admin-pwd').value = '';
+    document.getElementById('admin-pwd').focus();
+  }
+
+  function verifyAdmin() {
+    const pwd = document.getElementById('admin-pwd').value;
+    if(pwd === "amouna123") { // Mot de passe simple (modifiable)
+      document.getElementById('login-modal').style.display = 'none';
+      openAdminDashboard();
+    } else {
+      document.getElementById('login-err').style.display = 'block';
+    }
+  }
+
+  function openAdminDashboard() {
+    document.getElementById('form-wrap').style.display = 'none';
+    document.getElementById('end-screen').style.display = 'none';
+    document.getElementById('progress-bar').style.display = 'none';
+    document.getElementById('progress-text').style.display = 'none';
+    
+    document.getElementById('main-wrapper').classList.add('admin-mode');
+    document.getElementById('main-header').querySelector('h1').innerText = "Dashboard Data";
+    document.getElementById('main-header').querySelector('p').innerText = "Consultez et exportez les données";
+    
+    let db = JSON.parse(localStorage.getItem('dataMiningDBBI') || '[]');
+    document.getElementById('db-count').innerText = db.length;
+    
+    const tbody = document.querySelector('#responses-table tbody');
+    tbody.innerHTML = '';
+    
+    if(db.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Aucune réponse enregistrée pour le moment.</td></tr>';
+    } else {
+      db.reverse().forEach(row => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${row['Date']}</td>
+            <td style="font-weight: 600; color: white;">${row['Prénom']}</td>
+            <td>${row['Âge']} ans</td>
+            <td><span style="background: rgba(99, 102, 241, 0.2); padding: 2px 8px; border-radius: 10px; color: var(--primary);">${row['Moyenne']}</span></td>
+            <td>${row['Sommeil (h/n)']} h</td>
+            <td>${row['Réseaux (h/j)']} h</td>
+            <td>${row['Sport (h/sem)']} h</td>
+            <td>${row['Stress (1-10)']}</td>
+          </tr>
+        `;
+      });
+    }
+    
+    document.getElementById('admin-dashboard').style.display = 'block';
+  }
+
+  function exportData() {
+    let db = JSON.parse(localStorage.getItem('dataMiningDBBI') || '[]');
+    if (db.length === 0) {
+      alert("La base est vide !");
+      return;
+    }
+    const ws = XLSX.utils.json_to_sheet(db);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Reponses");
+    XLSX.writeFile(wb, "DataSet_BI.xlsx");
+  }
+</script>
+
+</body>
+</html>
